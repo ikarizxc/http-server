@@ -1,6 +1,7 @@
 package user
 
 import (
+	"database/sql"
 	"fmt"
 
 	"github.com/ikarizxc/http-server/internal/db/postgres"
@@ -29,13 +30,16 @@ func (r *UserRepositoryPostgres) CreateUser(user *user.User) (int, error) {
 	return id, nil
 }
 
-func (r *UserRepositoryPostgres) GetUser(id int) (*user.User, error) {
+func (r *UserRepositoryPostgres) GetUser(id int) (user.User, error) {
 	query := fmt.Sprintf("SELECT * FROM %s WHERE id=$1", postgres.UsersTable)
 
-	var user *user.User
+	var user user.User
 
 	if err := r.db.Get(&user, query, id); err != nil {
-		return nil, err
+		if err == sql.ErrNoRows {
+			return user, fmt.Errorf("no user with id %d", id)
+		}
+		return user, err
 	}
 
 	return user, nil
