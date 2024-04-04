@@ -1,11 +1,10 @@
 package main
 
 import (
-	"github.com/ikarizxc/http-server/internal/db/postgres"
 	"github.com/ikarizxc/http-server/internal/handler"
-	"github.com/ikarizxc/http-server/internal/repository"
+	userRepository "github.com/ikarizxc/http-server/internal/repository/user"
 	"github.com/ikarizxc/http-server/internal/server"
-	"github.com/ikarizxc/http-server/internal/service"
+	"github.com/ikarizxc/http-server/pkg/db/postgres"
 	"github.com/joho/godotenv"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
@@ -33,9 +32,8 @@ func main() {
 		logrus.Fatalf("error occured while connecting to database: %s", err.Error())
 	}
 
-	repos := repository.NewRepository(db)
-	services := service.NewService(repos)
-	handlers := handler.NewHandler(services)
+	repos := userRepository.NewUserRepository(db)
+	handlers := handler.NewHandler(repos)
 
 	srv := new(server.Server)
 	if err := srv.Run(viper.GetString("address"), viper.GetString("port"), handlers.InitRoutes()); err != nil {
