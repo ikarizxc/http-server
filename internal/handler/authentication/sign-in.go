@@ -7,13 +7,13 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt"
-	"github.com/ikarizxc/http-server/internal/entities/user"
+	"github.com/ikarizxc/http-server/internal/entities/users"
 	response "github.com/ikarizxc/http-server/internal/handler/responce"
 	"github.com/ikarizxc/http-server/pkg/hash/password"
 )
 
 type UserGetter interface {
-	GetByEmail(email string) (user.User, error)
+	GetByEmail(email string) (*users.User, error)
 }
 
 func SignIn(userGetter UserGetter) func(c *gin.Context) {
@@ -54,6 +54,9 @@ func SignIn(userGetter UserGetter) func(c *gin.Context) {
 			response.NewErrorResponce(c, http.StatusInternalServerError, err.Error())
 			return
 		}
+
+		// генерация рефреш + акцес токена
+		// запись рефреш токена в монгу
 
 		c.SetSameSite(http.SameSiteLaxMode)
 		c.SetCookie("accessToken", tokenString, 3600, "", "", false, true)

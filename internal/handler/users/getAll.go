@@ -1,15 +1,15 @@
-package user
+package users
 
 import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
-	"github.com/ikarizxc/http-server/internal/entities/user"
+	"github.com/ikarizxc/http-server/internal/entities/users"
 	response "github.com/ikarizxc/http-server/internal/handler/responce"
 )
 
 type UsersGetter interface {
-	GetAll() ([]*user.User, error)
+	GetAll() ([]*users.User, error)
 }
 
 func GetAll(usersCreator UsersGetter) func(c *gin.Context) {

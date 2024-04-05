@@ -8,12 +8,12 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt"
-	"github.com/ikarizxc/http-server/internal/entities/user"
+	"github.com/ikarizxc/http-server/internal/entities/users"
 	response "github.com/ikarizxc/http-server/internal/handler/responce"
 )
 
 type UserGetter interface {
-	GetById(id int) (user.User, error)
+	GetById(id int) (*users.User, error)
 }
 
 func RequireAuth(userGetter UserGetter) func(c *gin.Context) {
@@ -45,6 +45,9 @@ func RequireAuth(userGetter UserGetter) func(c *gin.Context) {
 			user, err := userGetter.GetById(int(claims["sub"].(float64)))
 			if err != nil {
 				if time.Now().Unix() >= claims["exp"].(int64) {
+					// проверяем рефреш токен на сходство с токеном в бд
+					// генерируем новую пару рефреш и акцес токена
+					// записываем рефреш в монгу
 					response.NewErrorResponce(c, http.StatusInternalServerError, "unauthorized")
 					return
 				}

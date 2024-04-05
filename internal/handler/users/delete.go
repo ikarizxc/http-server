@@ -1,19 +1,18 @@
-package user
+package users
 
 import (
 	"net/http"
 	"strconv"
 
 	"github.com/gin-gonic/gin"
-	"github.com/ikarizxc/http-server/internal/entities/user"
 	response "github.com/ikarizxc/http-server/internal/handler/responce"
 )
 
-type UserGetter interface {
-	GetById(id int) (user.User, error)
+type UserDeleter interface {
+	Delete(id int) error
 }
 
-func Get(userGetter UserGetter) func(c *gin.Context) {
+func Delete(userDeleter UserDeleter) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		userId := c.Param("user_id")
 
@@ -24,12 +23,21 @@ func Get(userGetter UserGetter) func(c *gin.Context) {
 			return
 		}
 
-		user, err := userGetter.GetById(id)
+		curUserId := c.GetInt("userId")
+		userIsAdmin := c.GetBool("userIsAdmin")
+		if !userIsAdmin && id != curUserId {
+			response.NewErrorResponce(c, http.StatusUnauthorized, "unauthorized")
+			return
+		}
+
+		err = userDeleter.Delete(id)
 		if err != nil {
 			response.NewErrorResponce(c, http.StatusInternalServerError, err.Error())
 			return
 		}
 
-		c.JSON(http.StatusOK, user)
+		c.JSON(http.StatusOK, map[string]interface{}{
+			"message": "success",
+		})
 	}
 }

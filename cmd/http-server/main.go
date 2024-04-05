@@ -2,7 +2,7 @@ package main
 
 import (
 	"github.com/ikarizxc/http-server/internal/handler"
-	userRepository "github.com/ikarizxc/http-server/internal/repository/user"
+	usersStorage "github.com/ikarizxc/http-server/internal/repository/users/postgres"
 	"github.com/ikarizxc/http-server/internal/server"
 	"github.com/ikarizxc/http-server/pkg/db/postgres"
 	"github.com/joho/godotenv"
@@ -32,7 +32,7 @@ func main() {
 		logrus.Fatalf("error occured while connecting to database: %s", err.Error())
 	}
 
-	repos := userRepository.NewUserRepository(db)
+	repos := usersStorage.NewUsersStorage(db)
 	handlers := handler.NewHandler(repos)
 
 	srv := new(server.Server)

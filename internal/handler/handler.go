@@ -5,17 +5,17 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/ikarizxc/http-server/internal/handler/authentication"
-	"github.com/ikarizxc/http-server/internal/handler/user"
+	usersHandler "github.com/ikarizxc/http-server/internal/handler/users"
 	"github.com/ikarizxc/http-server/internal/middleware"
-	userRepository "github.com/ikarizxc/http-server/internal/repository/user"
+	"github.com/ikarizxc/http-server/internal/repository/users"
 )
 
 type Handler struct {
-	userRepository *userRepository.Postgres
+	usersStorage users.Storage
 }
 
-func NewHandler(userRepository *userRepository.Postgres) *Handler {
-	return &Handler{userRepository: userRepository}
+func NewHandler(usersStorage users.Storage) *Handler {
+	return &Handler{usersStorage: usersStorage}
 }
 
 func (h *Handler) InitRoutes() *gin.Engine {
@@ -23,23 +23,23 @@ func (h *Handler) InitRoutes() *gin.Engine {
 
 	auth := router.Group("/auth")
 	{
-		auth.POST("/signup", authentication.SignUp(h.userRepository))
-		auth.GET("/signin", authentication.SignIn(h.userRepository))
+		auth.POST("/signup", authentication.SignUp(h.usersStorage))
+		auth.GET("/signin", authentication.SignIn(h.usersStorage))
 	}
 
-	router.GET("/validate", middleware.RequireAuth(h.userRepository), func(c *gin.Context) {
+	router.GET("/validate", middleware.RequireAuth(h.usersStorage), func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{
 			"message": "logged",
 		})
 	})
 
-	users := router.Group("/users", middleware.RequireAuth(h.userRepository))
+	users := router.Group("/users", middleware.RequireAuth(h.usersStorage))
 	{
-		users.GET("/:user_id", user.Get(h.userRepository))
-		users.GET("/", user.GetAll(h.userRepository))
+		users.GET("/:user_id", usersHandler.Get(h.usersStorage))
+		users.GET("/", usersHandler.GetAll(h.usersStorage))
 
-		users.PATCH("/:user_id", user.Update(h.userRepository))
-		users.DELETE("/:user_id", user.Delete(h.userRepository))
+		users.PATCH("/:user_id", usersHandler.Update(h.usersStorage))
+		users.DELETE("/:user_id", usersHandler.Delete(h.usersStorage))
 	}
 
 	return router

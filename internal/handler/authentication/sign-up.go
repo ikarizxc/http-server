@@ -4,18 +4,18 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
-	"github.com/ikarizxc/http-server/internal/entities/user"
+	"github.com/ikarizxc/http-server/internal/entities/users"
 	response "github.com/ikarizxc/http-server/internal/handler/responce"
 	"github.com/ikarizxc/http-server/pkg/hash/password"
 )
 
 type UserCreator interface {
-	Create(user *user.User) (int, error)
+	Create(user *users.User) (int, error)
 }
 
 func SignUp(userCreator UserCreator) func(c *gin.Context) {
 	return func(c *gin.Context) {
-		var input *user.User
+		var input *users.User
 
 		if err := c.BindJSON(&input); err != nil {
 			response.NewErrorResponce(c, http.StatusBadRequest, err.Error())
