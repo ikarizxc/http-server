@@ -18,47 +18,45 @@ type UserGetter interface {
 
 func RequireAuth(userGetter UserGetter) func(c *gin.Context) {
 	return func(c *gin.Context) {
-		accessToken, err := c.Cookie("accessToken")
+		c.Set("Authenticated", false)
+
+		accessToken, err := c.Cookie("access_token")
 		if err != nil {
 			response.NewErrorResponce(c, http.StatusUnauthorized, "unauthorized")
 			return
 		}
 
-		token, err := jwt.Parse(accessToken, func(token *jwt.Token) (interface{}, error) {
+		token, _ := jwt.Parse(accessToken, func(token *jwt.Token) (interface{}, error) {
 			if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
 				return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
 			}
 
 			return []byte(os.Getenv("JWT_SECRET")), nil
 		})
-		if err != nil {
-			response.NewErrorResponce(c, http.StatusUnauthorized, err.Error())
-			return
-		}
 
+		// распарсили клеймсы
 		if claims, ok := token.Claims.(jwt.MapClaims); ok {
+
+			c.Set("userId", int(claims["sub"].(float64)))
+			c.Set("isAdmin", claims["isAdmin"])
+
+			// проверяем на просрочку
 			if float64(time.Now().Unix()) >= claims["exp"].(float64) {
-				response.NewErrorResponce(c, http.StatusUnauthorized, "unauthorized")
+				// response.NewErrorResponce(c, http.StatusUnauthorized, "unauthorized")
 				return
 			}
 
-			user, err := userGetter.GetById(int(claims["sub"].(float64)))
+			// получаем юзера по айди из бд
+			_, err := userGetter.GetById(int(claims["sub"].(float64)))
 			if err != nil {
-				if time.Now().Unix() >= claims["exp"].(int64) {
-					// проверяем рефреш токен на сходство с токеном в бд
-					// генерируем новую пару рефреш и акцес токена
-					// записываем рефреш в монгу
-					response.NewErrorResponce(c, http.StatusInternalServerError, "unauthorized")
-					return
-				}
+				// response.NewErrorResponce(c, http.StatusUnauthorized, "unauthorized")
+				return
 			}
 
-			c.Set("userId", user.Id)
-			c.Set("userIsAdmin", user.IsAdmin)
-
+			c.Set("Authenticated", true)
 			c.Next()
 		} else {
-			response.NewErrorResponce(c, http.StatusUnauthorized, "unauthorized")
+			// response.NewErrorResponce(c, http.StatusUnauthorized, "unauthorized")
 			return
 		}
 	}

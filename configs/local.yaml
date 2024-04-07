@@ -1,2 +1,4 @@
 address: "localhost"
 port: "8080"
+accessTokenTTL: 1
+refreshTokenTTL: 2592000

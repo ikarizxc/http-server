@@ -2,8 +2,10 @@ package main
 
 import (
 	"github.com/ikarizxc/http-server/internal/handler"
+	tokensStorage "github.com/ikarizxc/http-server/internal/repository/tokens/mongo"
 	usersStorage "github.com/ikarizxc/http-server/internal/repository/users/postgres"
 	"github.com/ikarizxc/http-server/internal/server"
+	"github.com/ikarizxc/http-server/pkg/db/mongo"
 	"github.com/ikarizxc/http-server/pkg/db/postgres"
 	"github.com/joho/godotenv"
 	"github.com/sirupsen/logrus"
@@ -21,7 +23,7 @@ func main() {
 		logrus.Print("No .env file found")
 	}
 
-	db, err := postgres.NewPostgresDB(postgres.Config{
+	postgresDb, err := postgres.NewPostgresDB(postgres.Config{
 		Host:     "localhost",
 		Port:     "5436",
 		Username: "postgres",
@@ -32,8 +34,14 @@ func main() {
 		logrus.Fatalf("error occured while connecting to database: %s", err.Error())
 	}
 
-	repos := usersStorage.NewUsersStorage(db)
-	handlers := handler.NewHandler(repos)
+	mongoDb, err := mongo.New()
+	if err != nil {
+		logrus.Fatalf("error occured while connecting to database: %s", err.Error())
+	}
+
+	userStorage := usersStorage.NewUsersStorage(postgresDb)
+	tokensStorage := tokensStorage.NewTokensStorage(mongoDb)
+	handlers := handler.NewHandler(userStorage, tokensStorage)
 
 	srv := new(server.Server)
 	if err := srv.Run(viper.GetString("address"), viper.GetString("port"), handlers.InitRoutes()); err != nil {

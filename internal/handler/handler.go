@@ -1,21 +1,24 @@
 package handler
 
 import (
-	"net/http"
-
 	"github.com/gin-gonic/gin"
 	"github.com/ikarizxc/http-server/internal/handler/authentication"
 	usersHandler "github.com/ikarizxc/http-server/internal/handler/users"
 	"github.com/ikarizxc/http-server/internal/middleware"
+	"github.com/ikarizxc/http-server/internal/repository/tokens"
 	"github.com/ikarizxc/http-server/internal/repository/users"
 )
 
 type Handler struct {
-	usersStorage users.Storage
+	usersStorage  users.Storage
+	tokensStorage tokens.Storage
 }
 
-func NewHandler(usersStorage users.Storage) *Handler {
-	return &Handler{usersStorage: usersStorage}
+func NewHandler(usersStorage users.Storage, tokensStorage tokens.Storage) *Handler {
+	return &Handler{
+		usersStorage:  usersStorage,
+		tokensStorage: tokensStorage,
+	}
 }
 
 func (h *Handler) InitRoutes() *gin.Engine {
@@ -24,16 +27,11 @@ func (h *Handler) InitRoutes() *gin.Engine {
 	auth := router.Group("/auth")
 	{
 		auth.POST("/signup", authentication.SignUp(h.usersStorage))
-		auth.GET("/signin", authentication.SignIn(h.usersStorage))
+		auth.GET("/signin", authentication.SignIn(h.usersStorage, h.tokensStorage))
+		auth.GET("/logout", authentication.Logout())
 	}
 
-	router.GET("/validate", middleware.RequireAuth(h.usersStorage), func(c *gin.Context) {
-		c.JSON(http.StatusOK, gin.H{
-			"message": "logged",
-		})
-	})
-
-	users := router.Group("/users", middleware.RequireAuth(h.usersStorage))
+	users := router.Group("/users", middleware.RequireAuth(h.usersStorage), middleware.RefreshTokens(h.tokensStorage))
 	{
 		users.GET("/:user_id", usersHandler.Get(h.usersStorage))
 		users.GET("/", usersHandler.GetAll(h.usersStorage))
