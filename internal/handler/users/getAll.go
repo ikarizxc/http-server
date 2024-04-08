@@ -14,9 +14,11 @@ type UsersGetter interface {
 
 func GetAll(usersCreator UsersGetter) func(c *gin.Context) {
 	return func(c *gin.Context) {
+		op := "handlers.users.GetAll : "
+
 		users, err := usersCreator.GetAll()
 		if err != nil {
-			response.NewErrorResponce(c, http.StatusInternalServerError, err.Error())
+			response.NewErrorResponce(c, http.StatusInternalServerError, "",op+err.Error())
 			return
 		}
 

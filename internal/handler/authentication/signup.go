@@ -15,23 +15,24 @@ type UserCreator interface {
 
 func SignUp(userCreator UserCreator) func(c *gin.Context) {
 	return func(c *gin.Context) {
+		op := "handler.authentication.SignUp : "
 		var input *users.User
 
 		if err := c.BindJSON(&input); err != nil {
-			response.NewErrorResponce(c, http.StatusBadRequest, err.Error())
+			response.NewErrorResponce(c, http.StatusBadRequest, "incorrect input data", op+"error occured while binding json")
 			return
 		}
 
 		pass, err := password.GeneratePasswordHash(input.Password)
 		if err != nil {
-			response.NewErrorResponce(c, http.StatusInternalServerError, err.Error())
+			response.NewErrorResponce(c, http.StatusInternalServerError, "", op+err.Error())
 			return
 		}
 		input.Password = pass
 
 		id, err := userCreator.Create(input)
 		if err != nil {
-			response.NewErrorResponce(c, http.StatusInternalServerError, err.Error())
+			response.NewErrorResponce(c, http.StatusInternalServerError, "", op+err.Error())
 			return
 		}
 

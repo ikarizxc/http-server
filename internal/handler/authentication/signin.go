@@ -26,6 +26,8 @@ type TokenManager interface {
 
 func SignIn(userGetter UserGetter, tokenManager TokenManager) func(c *gin.Context) {
 	return func(c *gin.Context) {
+		op := "handler.authentication.SignIn : "
+
 		type UserSignIn struct {
 			Email    string
 			Password string
@@ -34,18 +36,18 @@ func SignIn(userGetter UserGetter, tokenManager TokenManager) func(c *gin.Contex
 		var input UserSignIn
 
 		if err := c.BindJSON(&input); err != nil {
-			response.NewErrorResponce(c, http.StatusBadRequest, err.Error())
+			response.NewErrorResponce(c, http.StatusBadRequest, "incorrect input data", op+"error occured while binding json")
 			return
 		}
 
 		user, err := userGetter.GetByEmail(input.Email)
 		if err != nil {
-			response.NewErrorResponce(c, http.StatusUnauthorized, "no user with this email")
+			response.NewErrorResponce(c, http.StatusNotFound, "no user with this email", op+"no user with this email")
 			return
 		}
 
 		if password.Compare(input.Password, user.Password) {
-			response.NewErrorResponce(c, http.StatusUnauthorized, "wrong password")
+			response.NewErrorResponce(c, http.StatusBadRequest, "wrong password", op+"incorrect password")
 			return
 		}
 
@@ -58,20 +60,20 @@ func SignIn(userGetter UserGetter, tokenManager TokenManager) func(c *gin.Contex
 		// генерация рефреш + акцес токена
 		accessToken, err := tokens.GenerateAccessToken(claims)
 		if err != nil {
-			response.NewErrorResponce(c, http.StatusInternalServerError, err.Error())
+			response.NewErrorResponce(c, http.StatusInternalServerError, "", op+err.Error())
 			return
 		}
 
 		refreshToken, err := tokens.GenerateRefreshToken(accessToken)
 		if err != nil {
-			response.NewErrorResponce(c, http.StatusInternalServerError, err.Error())
+			response.NewErrorResponce(c, http.StatusInternalServerError, "", op+err.Error())
 			return
 		}
 
 		// содаём хэш токена для хранения в монге
 		refreshTokenBcrypt, err := tokens.GenerateHashToken(refreshToken)
 		if err != nil {
-			response.NewErrorResponce(c, http.StatusInternalServerError, err.Error())
+			response.NewErrorResponce(c, http.StatusInternalServerError, "", op+err.Error())
 			return
 		}
 
@@ -80,19 +82,19 @@ func SignIn(userGetter UserGetter, tokenManager TokenManager) func(c *gin.Contex
 			// id does not exist
 			err = tokenManager.WriteRefreshToken(user.Id, string(refreshTokenBcrypt))
 			if err != nil {
-				response.NewErrorResponce(c, http.StatusInternalServerError, err.Error())
+				response.NewErrorResponce(c, http.StatusInternalServerError, "", op+err.Error())
 				return
 			}
 		} else if rt != "" && err == nil {
 			// id exist
 			err = tokenManager.UpdateRefreshToken(user.Id, string(refreshTokenBcrypt))
 			if err != nil {
-				response.NewErrorResponce(c, http.StatusInternalServerError, err.Error())
+				response.NewErrorResponce(c, http.StatusInternalServerError, "", op+err.Error())
 				return
 			}
 		} else if err != nil {
 			// error occurred
-			response.NewErrorResponce(c, http.StatusInternalServerError, err.Error())
+			response.NewErrorResponce(c, http.StatusInternalServerError, "", op+err.Error())
 			return
 		}
 

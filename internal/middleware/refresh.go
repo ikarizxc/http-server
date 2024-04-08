@@ -21,6 +21,8 @@ type TokenManager interface {
 
 func RefreshTokens(tokenManager TokenManager) func(c *gin.Context) {
 	return func(c *gin.Context) {
+		op := "handler.middleware.RefreshTokens : "
+
 		isAuthenticated := c.GetBool("Authenticated")
 
 		if isAuthenticated {
@@ -31,27 +33,21 @@ func RefreshTokens(tokenManager TokenManager) func(c *gin.Context) {
 
 			cookieAccessToken, err := c.Cookie("access_token")
 			if err != nil {
-				response.NewErrorResponce(c, http.StatusUnauthorized, "unauthorized")
+				response.NewErrorResponce(c, http.StatusUnauthorized, "unauthorized", op+"no access token in cookie")
 				return
 			}
 
 			cookieRefreshToken, err := c.Request.Cookie("refresh_token")
 			if err != nil {
-				response.NewErrorResponce(c, http.StatusUnauthorized, "unauthorized")
+				response.NewErrorResponce(c, http.StatusUnauthorized, "unauthorized", op+"no refresh token in cookie")
 				return
 			}
 
 			refreshTokenEncrypted := cookieRefreshToken.Value
 
-			// check if refreshtoken is expired
-			if cookieRefreshToken.MaxAge < 0 {
-				response.NewErrorResponce(c, http.StatusUnauthorized, "unauthorized")
-				return
-			}
-
 			refreshTokenDecryptedBytes, err := base64.StdEncoding.DecodeString(refreshTokenEncrypted)
 			if err != nil {
-				response.NewErrorResponce(c, http.StatusInternalServerError, err.Error())
+				response.NewErrorResponce(c, http.StatusInternalServerError, "", op+err.Error())
 				return
 			}
 
@@ -59,7 +55,7 @@ func RefreshTokens(tokenManager TokenManager) func(c *gin.Context) {
 
 			// match refreshtoken with accesstoken
 			if refreshTokenDecrypted[len(refreshTokenDecrypted)-8:] != cookieAccessToken[len(cookieAccessToken)-8:] {
-				response.NewErrorResponce(c, http.StatusUnauthorized, "unauthorized")
+				response.NewErrorResponce(c, http.StatusUnauthorized, "unauthorized", op+"refresh and access tokens mismatch")
 				return
 			}
 
@@ -69,12 +65,12 @@ func RefreshTokens(tokenManager TokenManager) func(c *gin.Context) {
 			// match refreshtokendecrypted with refreshtokenhash from db
 			refreshTokenHashFromStorage, err := tokenManager.ReadRefreshToken(id)
 			if err != nil {
-				response.NewErrorResponce(c, http.StatusInternalServerError, err.Error())
+				response.NewErrorResponce(c, http.StatusInternalServerError, "", op+err.Error())
 				return
 			}
 
 			if err := bcrypt.CompareHashAndPassword([]byte(refreshTokenHashFromStorage), refreshTokenDecryptedBytes); err != nil {
-				response.NewErrorResponce(c, http.StatusUnauthorized, err.Error())
+				response.NewErrorResponce(c, http.StatusUnauthorized, "unauthorized", op+err.Error())
 				return
 			}
 
@@ -87,20 +83,20 @@ func RefreshTokens(tokenManager TokenManager) func(c *gin.Context) {
 			// генерация рефреш + акцес токена
 			accessToken, err := tokens.GenerateAccessToken(claims)
 			if err != nil {
-				response.NewErrorResponce(c, http.StatusInternalServerError, err.Error())
+				response.NewErrorResponce(c, http.StatusInternalServerError, "", op+err.Error())
 				return
 			}
 
 			refreshToken, err := tokens.GenerateRefreshToken(accessToken)
 			if err != nil {
-				response.NewErrorResponce(c, http.StatusInternalServerError, err.Error())
+				response.NewErrorResponce(c, http.StatusInternalServerError, "", op+err.Error())
 				return
 			}
 
 			// содаём хэш токена для хранения в монге
 			refreshTokenBcrypt, err := tokens.GenerateHashToken(refreshToken)
 			if err != nil {
-				response.NewErrorResponce(c, http.StatusInternalServerError, err.Error())
+				response.NewErrorResponce(c, http.StatusInternalServerError, "", op+err.Error())
 				return
 			}
 
@@ -109,19 +105,19 @@ func RefreshTokens(tokenManager TokenManager) func(c *gin.Context) {
 				// id does not exist
 				err = tokenManager.WriteRefreshToken(id, string(refreshTokenBcrypt))
 				if err != nil {
-					response.NewErrorResponce(c, http.StatusInternalServerError, err.Error())
+					response.NewErrorResponce(c, http.StatusInternalServerError, "", op+err.Error())
 					return
 				}
 			} else if rt != "" && err == nil {
 				// id exist
 				err = tokenManager.UpdateRefreshToken(id, string(refreshTokenBcrypt))
 				if err != nil {
-					response.NewErrorResponce(c, http.StatusInternalServerError, err.Error())
+					response.NewErrorResponce(c, http.StatusInternalServerError, "", op+err.Error())
 					return
 				}
 			} else if err != nil {
 				// error occurred
-				response.NewErrorResponce(c, http.StatusInternalServerError, err.Error())
+				response.NewErrorResponce(c, http.StatusInternalServerError, "", op+err.Error())
 				return
 			}
 

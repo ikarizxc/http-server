@@ -18,11 +18,13 @@ type UserGetter interface {
 
 func RequireAuth(userGetter UserGetter) func(c *gin.Context) {
 	return func(c *gin.Context) {
+		op := "handler.middleware.RequireAuth : "
+
 		c.Set("Authenticated", false)
 
 		accessToken, err := c.Cookie("access_token")
 		if err != nil {
-			response.NewErrorResponce(c, http.StatusUnauthorized, "unauthorized")
+			response.NewErrorResponce(c, http.StatusUnauthorized, "unauthorized", op+"no access token in cookie")
 			return
 		}
 
